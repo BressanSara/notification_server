@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import * as admin from "firebase-admin";
-import * as bodyParser from "body-parser";
 import * as fs from "fs";
+import axios from "axios";
 
 // Configurazione Firebase Admin SDK
 const serviceAccount = require("./serviceAccountKey.json");
@@ -10,59 +10,157 @@ admin.initializeApp({
 });
 
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json());
 
 const tokensFile = "./tokens.json";
+const remindersFile = "./reminders.json";
+const keysFile = "./keys.json";
 
-// Funzione per salvare i token
-const saveToken = (token: string) => {
-    let tokens: string[] = [];
-    if (fs.existsSync(tokensFile)) {
-        tokens = JSON.parse(fs.readFileSync(tokensFile, "utf-8"));
+// Funzione per ottenere la chiave API
+const getApiKey = (): string => {
+    if (fs.existsSync(keysFile)) {
+        const keys = JSON.parse(fs.readFileSync(keysFile, "utf-8"));
+        return keys.OPENWEATHER_API_KEY || "";
     }
-    if (!tokens.includes(token)) {
-        tokens.push(token);
-        fs.writeFileSync(tokensFile, JSON.stringify(tokens, null, 2));
+    throw new Error("Chiave API non trovata");
+};
+
+// Funzione per leggere un file JSON
+const readFile = (filePath: string): any[] => {
+    if (fs.existsSync(filePath)) {
+        return JSON.parse(fs.readFileSync(filePath, "utf-8"));
     }
+    return [];
+};
+
+// Funzione per scrivere un file JSON
+const writeFile = (filePath: string, data: any[]) => {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 };
 
 // Endpoint per registrare un token
 app.post("/register", (req: Request, res: Response) => {
     const { token } = req.body;
-    if (!token) {
-        return res.status(400).send("Token mancante");
+    if (!token) return res.status(400).send("Token mancante");
+
+    const tokens = readFile(tokensFile);
+    if (!tokens.includes(token)) {
+        tokens.push(token);
+        writeFile(tokensFile, tokens);
     }
-    saveToken(token);
     res.send("Token salvato con successo");
 });
 
 // Endpoint per inviare notifiche
 app.post("/send-notification", async (req: Request, res: Response) => {
     const { title, body } = req.body;
-    if (!title || !body) {
-        return res.status(400).send("Titolo o corpo della notifica mancanti");
-    }
+    if (!title || !body) return res.status(400).send("Titolo o corpo della notifica mancanti");
 
-    if (!fs.existsSync(tokensFile)) {
-        return res.status(400).send("Nessun token registrato");
-    }
+    const tokens = readFile(tokensFile);
+    if (tokens.length === 0) return res.status(400).send("Nessun token registrato");
 
-    const tokens: string[] = JSON.parse(fs.readFileSync(tokensFile, "utf-8"));
     const messages = tokens.map((token) => ({
         token,
         notification: { title, body },
     }));
 
     try {
-        const response = await Promise.all(
-            messages.map((message) => admin.messaging().send(message))
-        );
-        res.send(`Notifiche inviate con successo: ${response.length}`);
+        await Promise.all(messages.map((message) => admin.messaging().send(message)));
+        res.send("Notifiche inviate con successo");
     } catch (error) {
         console.error("Errore nell'invio delle notifiche:", error);
         res.status(500).send("Errore nell'invio delle notifiche");
     }
 });
+
+// Endpoint per aggiungere un reminder
+app.post("/reminders", (req: Request, res: Response) => {
+    const { token, lat, lon, maxTemp, minTemp } = req.body;
+    if (!token || !lat || !lon || (!maxTemp && !minTemp)) {
+        return res.status(400).send("Dati mancanti");
+    }
+
+    const reminders = readFile(remindersFile);
+    const newReminder = { id: Date.now(), token, lat, lon, maxTemp, minTemp };
+    reminders.push(newReminder);
+    writeFile(remindersFile, reminders);
+
+    res.status(201).send(newReminder);
+});
+
+// Endpoint per ottenere tutti i reminder
+app.get("/reminders", (req: Request, res: Response) => {
+    const reminders = readFile(remindersFile);
+    if (reminders.length === 0) return res.status(404).send("Nessun reminder trovato");
+    res.send(reminders);
+});
+
+// Endpoint per aggiornare un reminder
+app.put("/reminders/:id", (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { lat, lon, maxTemp, minTemp } = req.body;
+
+    const reminders = readFile(remindersFile);
+    const reminder = reminders.find((r) => r.id === parseInt(id));
+    if (!reminder) return res.status(404).send("Reminder non trovato");
+
+    if (lat) reminder.lat = lat;
+    if (lon) reminder.lon = lon;
+    if (maxTemp !== undefined) reminder.maxTemp = maxTemp;
+    if (minTemp !== undefined) reminder.minTemp = minTemp;
+
+    writeFile(remindersFile, reminders);
+    res.send(reminder);
+});
+
+// Endpoint per eliminare un reminder
+app.delete("/reminders/:id", (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const reminders = readFile(remindersFile);
+    const updatedReminders = reminders.filter((r) => r.id !== parseInt(id));
+    if (reminders.length === updatedReminders.length) {
+        return res.status(404).send("Reminder non trovato");
+    }
+
+    writeFile(remindersFile, updatedReminders);
+    res.status(204).send();
+});
+
+// Funzione per controllare le condizioni meteo e inviare notifiche
+const checkWeatherAndNotify = async () => {
+    const reminders = readFile(remindersFile);
+    const OPENWEATHER_API_KEY = getApiKey();
+
+    for (const reminder of reminders) {
+        const { token, lat, lon, maxTemp, minTemp } = reminder;
+
+        try {
+            const response = await axios.get(
+                `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${OPENWEATHER_API_KEY}`
+            );
+            const currentTemp = response.data.main.temp;
+
+            if (
+                (maxTemp !== undefined && currentTemp > maxTemp) ||
+                (minTemp !== undefined && currentTemp < minTemp)
+            ) {
+                await admin.messaging().send({
+                    token,
+                    notification: {
+                        title: "Allerta Meteo",
+                        body: `La temperatura è ${currentTemp}°C, superando la soglia impostata.`,
+                    },
+                });
+            }
+        } catch (error) {
+            console.error("Errore nel controllo meteo o invio notifica:", error);
+        }
+    }
+};
+
+// Avvio del controllo periodico ogni 10 minuti
+setInterval(checkWeatherAndNotify, 10 * 60 * 1000);
 
 // Avvio del server
 const PORT = 3000;
