@@ -87,13 +87,13 @@ app.post("/send-notification", async (req: Request, res: Response) => {
 
 // Endpoint per aggiungere un reminder
 app.post("/reminders", (req: Request, res: Response) => {
-    const { lat, lon, maxTemp, minTemp } = req.body;
+    const {id,  lat, lon, maxTemp, minTemp } = req.body;
     if (!lat || !lon || (!maxTemp && !minTemp)) {
         return res.status(400).send("Dati mancanti");
     }
 
     const reminders = readFile(remindersFile);
-    const newReminder = { id: Date.now(), lat, lon, maxTemp, minTemp };
+    const newReminder = { id, lat, lon, maxTemp, minTemp };
     reminders.push(newReminder);
     writeFile(remindersFile, reminders);
 
