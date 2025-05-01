@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "postbuild": "xcopy .\\src\\resources .\\dist\\ /E /I /Y"
   },
   "repository": {
     "type": "git",
@@ -19,10 +22,10 @@
   },
   "homepage": "https://github.com/BressanSara/notification_server#readme",
   "dependencies": {
-    "@types/express": "^5.0.1",
+    "@types/express": "^4.17.17",
     "@types/node": "^22.15.3",
     "axios": "^1.9.0",
-    "express": "^5.1.0",
+    "express": "^4.18.2",
     "firebase-admin": "^13.3.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
