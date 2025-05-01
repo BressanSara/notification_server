@@ -88,7 +88,7 @@ app.post("/send-notification", async (req: Request, res: Response) => {
 // Endpoint per aggiungere un reminder
 app.post("/reminders", (req: Request, res: Response) => {
     const { id, locationName, lat, lon, threshold, isMax } = req.body;
-    if (!lat || !lon || threshold === undefined || isMax === undefined) {
+    if (!id || !lat || !lon || threshold === undefined || isMax === undefined) {
         return res.status(400).send("Dati mancanti");
     }
 
@@ -113,7 +113,7 @@ app.put("/reminders/:id", (req: Request, res: Response) => {
     const { locationName, lat, lon, threshold, isMax } = req.body;
 
     const reminders = readFile(remindersFile);
-    const reminder = reminders.find((r) => r.id === parseInt(id));
+    const reminder = reminders.find((r) => r.id === id);
     if (!reminder) return res.status(404).send("Reminder non trovato");
 
     if (lat) reminder.lat = lat;
@@ -131,7 +131,7 @@ app.delete("/reminders/:id", (req: Request, res: Response) => {
     const { id } = req.params;
 
     const reminders = readFile(remindersFile);
-    const updatedReminders = reminders.filter((r) => r.id !== parseInt(id));
+    const updatedReminders = reminders.filter((r) => r.id !== id);
     if (reminders.length === updatedReminders.length) {
         return res.status(404).send("Reminder non trovato");
     }
@@ -185,5 +185,5 @@ setInterval(checkWeatherAndNotify, 10 * 60 * 1000);
 // Avvio del server
 const PORT = 3000;
 app.listen(PORT, () => {
-    console.log(`Server in esecuzione su http://localhost:${PORT}`);
+    console.log(`Server in esecuzione sulla porta ${PORT}`);
 });
