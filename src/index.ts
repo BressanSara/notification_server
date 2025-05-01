@@ -87,13 +87,13 @@ app.post("/send-notification", async (req: Request, res: Response) => {
 
 // Endpoint per aggiungere un reminder
 app.post("/reminders", (req: Request, res: Response) => {
-    const { token, lat, lon, maxTemp, minTemp } = req.body;
-    if (!token || !lat || !lon || (!maxTemp && !minTemp)) {
+    const { lat, lon, maxTemp, minTemp } = req.body;
+    if (!lat || !lon || (!maxTemp && !minTemp)) {
         return res.status(400).send("Dati mancanti");
     }
 
     const reminders = readFile(remindersFile);
-    const newReminder = { id: Date.now(), token, lat, lon, maxTemp, minTemp };
+    const newReminder = { id: Date.now(), lat, lon, maxTemp, minTemp };
     reminders.push(newReminder);
     writeFile(remindersFile, reminders);
 
@@ -145,7 +145,7 @@ const checkWeatherAndNotify = async () => {
     const OPENWEATHER_API_KEY = getApiKey();
 
     for (const reminder of reminders) {
-        const { token, lat, lon, maxTemp, minTemp } = reminder;
+        const { lat, lon, maxTemp, minTemp } = reminder;
 
         try {
             const response = await axios.get(
@@ -157,13 +157,20 @@ const checkWeatherAndNotify = async () => {
                 (maxTemp !== undefined && currentTemp > maxTemp) ||
                 (minTemp !== undefined && currentTemp < minTemp)
             ) {
-                await admin.messaging().send({
-                    token,
-                    notification: {
-                        title: "Allerta Meteo",
-                        body: `La temperatura è ${currentTemp}°C, superando la soglia impostata.`,
-                    },
-                });
+                const tokens = readFile(tokensFile);
+                if (tokens.length === 0) {
+                    console.error("Nessun token registrato per inviare la notifica");
+                } else {
+                    for (const token of tokens) {
+                        await admin.messaging().send({
+                            token: token,
+                            notification: {
+                                title: "Allerta Meteo",
+                                body: `La temperatura è ${currentTemp}°C, superando la soglia impostata.`,
+                            },
+                        });
+                    }
+                }
             }
         } catch (error) {
             console.error("Errore nel controllo meteo o invio notifica:", error);
