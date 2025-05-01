@@ -1,0 +1,30 @@
+{
+  "name": "notification_server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BressanSara/notification_server.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/BressanSara/notification_server/issues"
+  },
+  "homepage": "https://github.com/BressanSara/notification_server#readme",
+  "dependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.15.3",
+    "axios": "^1.9.0",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
