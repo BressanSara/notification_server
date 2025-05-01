@@ -87,13 +87,13 @@ app.post("/send-notification", async (req: Request, res: Response) => {
 
 // Endpoint per aggiungere un reminder
 app.post("/reminders", (req: Request, res: Response) => {
-    const {id,  lat, lon, maxTemp, minTemp } = req.body;
+    const {id, locationName,lat, lon, maxTemp, minTemp } = req.body;
     if (!lat || !lon || (!maxTemp && !minTemp)) {
         return res.status(400).send("Dati mancanti");
     }
 
     const reminders = readFile(remindersFile);
-    const newReminder = { id, lat, lon, maxTemp, minTemp };
+    const newReminder = { id, locationName,lat, lon, maxTemp, minTemp };
     reminders.push(newReminder);
     writeFile(remindersFile, reminders);
 
@@ -110,7 +110,7 @@ app.get("/reminders", (req: Request, res: Response) => {
 // Endpoint per aggiornare un reminder
 app.put("/reminders/:id", (req: Request, res: Response) => {
     const { id } = req.params;
-    const { lat, lon, maxTemp, minTemp } = req.body;
+    const { locationName, lat, lon, maxTemp, minTemp } = req.body;
 
     const reminders = readFile(remindersFile);
     const reminder = reminders.find((r) => r.id === parseInt(id));
@@ -118,6 +118,7 @@ app.put("/reminders/:id", (req: Request, res: Response) => {
 
     if (lat) reminder.lat = lat;
     if (lon) reminder.lon = lon;
+    if (locationName) reminder.locationName = locationName;
     if (maxTemp !== undefined) reminder.maxTemp = maxTemp;
     if (minTemp !== undefined) reminder.minTemp = minTemp;
 
@@ -145,7 +146,7 @@ const checkWeatherAndNotify = async () => {
     const OPENWEATHER_API_KEY = getApiKey();
 
     for (const reminder of reminders) {
-        const { lat, lon, maxTemp, minTemp } = reminder;
+        const { locationName, lat, lon, maxTemp, minTemp } = reminder;
 
         try {
             const response = await axios.get(
@@ -166,7 +167,7 @@ const checkWeatherAndNotify = async () => {
                             token: token,
                             notification: {
                                 title: "Allerta Meteo",
-                                body: `La temperatura è ${currentTemp}°C, superando la soglia impostata.`,
+                                body: `La temperatura è ${currentTemp}°C a ${locationName}, superando la soglia impostata.`,
                             },
                         });
                     }
