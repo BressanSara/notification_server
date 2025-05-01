@@ -88,7 +88,7 @@ app.post("/send-notification", async (req: Request, res: Response) => {
 // Endpoint per aggiungere un reminder
 app.post("/reminders", (req: Request, res: Response) => {
     const { id, locationName, lat, lon, threshold, isMax } = req.body;
-    if (!id || !lat || !lon || threshold === undefined || isMax === undefined) {
+    if (!id || !locationName || !lat || !lon || threshold === undefined || isMax === undefined) {
         return res.status(400).send("Dati mancanti");
     }
 
