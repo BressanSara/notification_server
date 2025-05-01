@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "tsc",
-    "postbuild": "xcopy .\\src\\resources .\\dist\\ /E /I /Y"
+    "postbuild": "node copy-resources.js"
   },
   "repository": {
     "type": "git",
