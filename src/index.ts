@@ -179,8 +179,8 @@ const checkWeatherAndNotify = async () => {
     }
 };
 
-// Avvio del controllo periodico ogni 10 minuti
-setInterval(checkWeatherAndNotify, 10 * 60 * 1000);
+// Avvio del controllo periodico ogni 60 minuti
+setInterval(checkWeatherAndNotify, 60 * 60 * 1000);
 
 // Avvio del server
 const PORT = 3000;
