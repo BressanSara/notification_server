@@ -167,7 +167,7 @@ const checkWeatherAndNotify = async () => {
                             token: token,
                             notification: {
                                 title: "Allerta Meteo",
-                                body: `La temperatura è ${currentTemp}°C a ${locationName}, superando la soglia impostata.`,
+                                body: `${locationName}: La temperatura è ${currentTemp}°C, superando la soglia impostata.`,
                             },
                         });
                     }
